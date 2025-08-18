@@ -1,15 +1,19 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 function Header() {
+  const location = useLocation();
+  const hideLogin = location.pathname === '/calendar';
   return (
     <header className="header">
       <div className="header-content">
         <Link to="/" className="brand">
-          WashUp
+          Smart Laundry Portal - Wash Up!
         </Link>
         <nav className="nav-links">
-          <Link to="/login" className="nav-link">Login</Link>
+          {!hideLogin && (
+            <Link to="/login" className="nav-link login-btn">Login</Link>
+          )}
         </nav>
       </div>
     </header>

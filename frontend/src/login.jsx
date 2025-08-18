@@ -60,8 +60,8 @@ function Login() {
         localStorage.setItem('authToken', data.token);
       }
 
-      // Redirect to home page
-      navigate('/');
+      // Redirect to calendar page after successful sign-in
+      navigate('/calendar');
     } catch (err) {
       console.error('Login error', err);
       setError('Network error. Please try again.');
