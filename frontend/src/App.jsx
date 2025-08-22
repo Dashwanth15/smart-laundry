@@ -4,6 +4,8 @@ import './App.css';
 import './styles.css';
 import Login from './login';
 import Calendar from './calendar';
+import Batch from './batch';
+import BatchType from './batchType';
 import Header from './components/Header';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
@@ -31,6 +33,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/calendar" element={<Calendar />} />
+          <Route path="/batch/:date/:dayType" element={<Batch />} />
+          <Route path="/batch/:date/:dayType/:batchType" element={<BatchType />} />
         </Routes>
       </div>
     </Router>
