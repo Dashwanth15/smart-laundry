@@ -1,0 +1,43 @@
+.menu-item {
+  display: block;
+  padding: 1rem;
+  color: #648DE5;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  background: none;
+  border: none;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.menu-item:hover {
+  background-color: #f0f0f0;
+  color: #9EB7E5;
+}
+
+/* Styles for buttons that should look like nav links */
+button.nav-link {
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  margin: 0;
+  padding: 0.75rem 1.5rem;
+}
+
+button.nav-link.login-btn {
+  background: linear-gradient(135deg, #648DE5 0%, #9EB7E5 100%);
+  color: white;
+  border: 2px solid #648DE5;
+  border-radius: 15px;
+  padding: 0.75rem 2rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  box-shadow: 0 4px 12px rgba(100, 141, 229, 0.3);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}

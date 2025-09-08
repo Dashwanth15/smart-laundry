@@ -8,6 +8,8 @@ import Batch from './batch';
 import BatchType from './batchType';
 import Header from './components/Header';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { PrivateRoute } from './contexts/PrivateRoute';
 
 function Home() {
   return (
@@ -27,16 +29,30 @@ function Home() {
 function App() {
   return (
     <Router>
-      <div className="App">
-        <Header />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/batch/:date/:dayType" element={<Batch />} />
-          <Route path="/batch/:date/:dayType/:batchType" element={<BatchType />} />
-        </Routes>
-      </div>
+      <AuthProvider>
+        <div className="App">
+          <Header />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/calendar" element={
+              <PrivateRoute>
+                <Calendar />
+              </PrivateRoute>
+            } />
+            <Route path="/batch/:date/:dayType" element={
+              <PrivateRoute>
+                <Batch />
+              </PrivateRoute>
+            } />
+            <Route path="/batch/:date/:dayType/:batchType" element={
+              <PrivateRoute>
+                <BatchType />
+              </PrivateRoute>
+            } />
+          </Routes>
+        </div>
+      </AuthProvider>
     </Router>
   );
 }

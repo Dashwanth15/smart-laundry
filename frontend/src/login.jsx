@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import './App.css';
 import './styles.css';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -10,6 +11,7 @@ function Login() {
   const [error, setError] = useState(null);
   const [serverInfo, setServerInfo] = useState(null);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   // Assumption: your Flask backend exposes a POST /api/login endpoint
   // that accepts { email, password } and returns JSON { success: true, token }
@@ -55,9 +57,9 @@ function Login() {
         return;
       }
 
-      // On success, optionally store token and redirect
+      // On success, login and redirect
       if (data.token) {
-        localStorage.setItem('authToken', data.token);
+        login(data.token);
       }
 
       // Redirect to calendar page after successful sign-in

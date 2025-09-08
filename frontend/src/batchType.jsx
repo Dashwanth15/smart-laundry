@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './App.css';
 import './styles.css';
+import { batchService } from './services/batchService';
 
 function BatchType() {
   const { date, dayType, batchType } = useParams();
@@ -9,6 +10,9 @@ function BatchType() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [batches, setBatches] = useState([]);
   const [currentBatchStudents, setCurrentBatchStudents] = useState([]);
+  const [currentBatchId, setCurrentBatchId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [studentName, setStudentName] = useState('');
   const [studentId, setStudentId] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -16,7 +20,38 @@ function BatchType() {
   const [time, setTime] = useState('');
   const [numberOfClothes, setNumberOfClothes] = useState('');
 
+  // Fetch batches when component mounts
+  useEffect(() => {
+    const fetchBatches = async () => {
+      try {
+        const batchesData = await batchService.getBatches(date, dayType, batchType);
+        setBatches(batchesData);
+      } catch (err) {
+        setError('Failed to load batches');
+        console.error('Error fetching batches:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBatches();
+  }, [date, dayType, batchType]);
+
   console.log('BatchType component rendered with:', { date, dayType, batchType });
+
+  // Date constraints: allow adding only on today's date
+  const getTodayString = () => {
+    const t = new Date();
+    const y = t.getFullYear();
+    const m = String(t.getMonth() + 1).padStart(2, '0');
+    const d = String(t.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+  const todayString = getTodayString();
+  const isToday = date === todayString;
+  const isPast = date < todayString;
+  const isFuture = date > todayString;
+  const isReadOnly = !isToday; // past or future
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -52,7 +87,11 @@ function BatchType() {
     return batches.length + 1;
   };
 
-  const handleAddStudent = () => {
+  const handleAddStudent = async () => {
+    if (isReadOnly) {
+      alert('This date is read-only. You can only view batches for past or future dates.');
+      return;
+    }
     if (!studentName || !studentId || !phoneNumber || !bagNumber || !time || !numberOfClothes) {
       alert('Please fill in all fields');
       return;
@@ -63,17 +102,42 @@ function BatchType() {
       return;
     }
 
-    const newStudent = {
-      id: Date.now(),
-      name: studentName,
-      studentId: studentId,
-      phoneNumber: phoneNumber,
-      bagNumber: bagNumber,
-      time: time,
-      numberOfClothes: numberOfClothes
-    };
+    try {
+      const newStudent = {
+        name: studentName,
+        studentId: studentId,
+        phoneNumber: phoneNumber,
+        bagNumber: bagNumber,
+        time: time,
+        numberOfClothes: parseInt(numberOfClothes)
+      };
 
-    setCurrentBatchStudents([...currentBatchStudents, newStudent]);
+      // If no current batch, create a new one
+      if (!currentBatchId) {
+        const newBatch = await batchService.createBatch({
+          date,
+          dayType,
+          batchType,
+          batchNumber: getNextBatchNumber()
+        });
+        setCurrentBatchId(newBatch._id);
+      }
+
+      // Add student to the current batch
+      const addedStudent = await batchService.addStudent(currentBatchId, newStudent);
+      setCurrentBatchStudents([...currentBatchStudents, addedStudent]);
+
+      // Clear form
+      setStudentName('');
+      setStudentId('');
+      setPhoneNumber('');
+      setBagNumber('');
+      setTime('');
+      setNumberOfClothes('');
+    } catch (err) {
+      console.error('Error adding student:', err);
+      alert('Failed to add student. Please try again.');
+    }
     
     // Clear form
     setStudentName('');
@@ -89,6 +153,10 @@ function BatchType() {
   };
 
   const handleCreateBatch = () => {
+    if (isReadOnly) {
+      alert('This date is read-only. You can only view batches for past or future dates.');
+      return;
+    }
     if (currentBatchStudents.length === 0) {
       alert('Please add at least one student to create a batch');
       return;
@@ -117,6 +185,10 @@ function BatchType() {
   };
 
   const toggleAddForm = () => {
+    if (isReadOnly) {
+      alert('This date is read-only. Adding batches is disabled.');
+      return;
+    }
     setShowAddForm(!showAddForm);
     if (!showAddForm) {
       setCurrentBatchStudents([]);
@@ -182,6 +254,19 @@ function BatchType() {
         borderRadius: '12px',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
       }}>
+        {isReadOnly && (
+          <div style={{
+            marginBottom: '1rem',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            background: 'rgba(205, 195, 146, 0.25)',
+            border: '1px solid #CDC392',
+            color: '#2d3748',
+            fontWeight: 600
+          }}>
+            {isPast ? 'Past date - viewing only. Adding batches is disabled.' : 'Future date - viewing only. Adding batches is disabled.'}
+          </div>
+        )}
         <h1 style={{ 
           color: '#648DE5', 
           marginBottom: '1rem',
@@ -208,8 +293,11 @@ function BatchType() {
             fontSize: '1rem',
             fontWeight: '600',
             boxShadow: '0 2px 8px rgba(100, 141, 229, 0.3)',
-            margin: '0 auto'
+            margin: '0 auto',
+            opacity: isReadOnly ? 0.5 : 1,
+            cursor: isReadOnly ? 'not-allowed' : 'pointer'
           }}
+          disabled={isReadOnly}
         >
           <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>+</span>
           Add Batch

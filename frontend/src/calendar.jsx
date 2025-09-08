@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import './App.css';
 import './styles.css';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function buildMonthDays(baseDate) {
   const year = baseDate.getFullYear();
@@ -68,7 +70,14 @@ function Calendar() {
     
     const dayType = getDayType(dateObj);
     if (dayType === 'holiday') {
-      alert('Holidays are not available for batch scheduling');
+      toast.info('Holidays are not available for batch scheduling', {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true
+      });
       return;
     }
     
@@ -85,6 +94,7 @@ function Calendar() {
 
   return (
     <div className="calendar-page">
+      <ToastContainer />
       <div className="calendar-card">
         <div className="calendar-header">
           <button onClick={goPrev} aria-label="Previous Month">‹</button>
