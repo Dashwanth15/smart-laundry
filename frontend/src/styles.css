@@ -306,6 +306,76 @@ button[type="submit"]:hover {
   box-shadow: 0 8px 25px rgba(100, 141, 229, 0.4);
 }
 
+/* Form Footer Styles */
+.form-footer {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.forgot-password-link {
+  color: #648DE5;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.forgot-password-link:hover {
+  color: #9EB7E5;
+  text-decoration: underline;
+}
+
+.back-to-home {
+  color: #648DE5;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.back-to-login {
+  color: #648DE5;
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.back-to-login:hover {
+  color: #9EB7E5;
+}
+
+.form-description {
+  color: #666;
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.error-message {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.success-message {
+  color: #27ae60;
+  background: rgba(39, 174, 96, 0.1);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .header-content {

@@ -120,8 +120,11 @@ function Login() {
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
 
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <Link to="/" style={{ color: '#3498db', textDecoration: 'none' }}>
+        <div className="form-footer">
+          <Link to="/forgot-password" className="forgot-password-link">
+            Forgot your password?
+          </Link>
+          <Link to="/" className="back-to-home">
             ← Back to Home
           </Link>
         </div>

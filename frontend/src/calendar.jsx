@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './App.css';
 import './styles.css';
 import { ToastContainer, toast } from 'react-toastify';
@@ -49,6 +50,7 @@ function getDayTypeLabel(dayType) {
 }
 
 function Calendar() {
+  const navigate = useNavigate();
   const [activeDate, setActiveDate] = useState(new Date());
 
   const days = useMemo(() => buildMonthDays(activeDate), [activeDate]);
@@ -88,8 +90,8 @@ function Calendar() {
     const dateString = `${year}-${month}-${day}`;
     const dayTypeParam = dayType;
     
-    // Redirect to batch page with date and day type
-    window.location.href = `/batch/${dateString}/${dayTypeParam}`;
+    // Navigate to batch page with date and day type using React Router
+    navigate(`/batch/${dateString}/${dayTypeParam}`);
   };
 
   return (

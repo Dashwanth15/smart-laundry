@@ -7,6 +7,7 @@ import Calendar from './calendar';
 import Batch from './batch';
 import BatchType from './batchType';
 import Header from './components/Header';
+import ForgotPassword from './components/ForgotPassword';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './contexts/PrivateRoute';
@@ -35,6 +36,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/calendar" element={
               <PrivateRoute>
                 <Calendar />

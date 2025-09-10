@@ -98,6 +98,55 @@ def me():
 	except InvalidTokenError:
 		return jsonify({'error': 'invalid token'}), 401
 
+@auth_bp.route('/change-password', methods=['POST'])
+def change_password():
+	"""Change password for authenticated user."""
+	# Get current user from token
+	auth = request.headers.get('Authorization', '')
+	if not auth.startswith('Bearer '):
+		return jsonify({'error': 'missing token'}), 401
+	token = auth.split(None, 1)[1]
+	secret = os.environ.get('SECRET_KEY', current_app.config.get('SECRET_KEY', 'dev-secret'))
+	
+	try:
+		payload = jwt.decode(token, secret, algorithms=['HS256'])
+	except (ExpiredSignatureError, InvalidTokenError):
+		return jsonify({'error': 'invalid token'}), 401
+
+	data = request.get_json() or {}
+	current_password = data.get('currentPassword')
+	new_password = data.get('newPassword')
+
+	if not current_password or not new_password:
+		return jsonify({'error': 'current and new password required'}), 400
+
+	# Find user in staff or users collection
+	email = payload.get('email')
+	staff = get_collection('staff')
+	user = staff.find_one({'email': email})
+	collection = staff
+
+	if not user:
+		users = users_collection()
+		user = users.find_one({'email': email})
+		collection = users
+
+	if not user:
+		return jsonify({'error': 'user not found'}), 404
+
+	# Verify current password
+	if not check_password_hash(user.get('password', ''), current_password):
+		return jsonify({'error': 'current password is incorrect'}), 401
+
+	# Update password
+	new_hash = generate_password_hash(new_password)
+	collection.update_one(
+		{'email': email},
+		{'$set': {'password': new_hash}}
+	)
+
+	return jsonify({'message': 'password updated successfully'})
+
 	# payload contains email (we stored it on login), find user by email
 	email = payload.get('email')
 	if not email:
