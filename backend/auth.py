@@ -98,6 +98,53 @@ def me():
 	except InvalidTokenError:
 		return jsonify({'error': 'invalid token'}), 401
 
+	# payload contains email (we stored it on login), find user by email
+	email = payload.get('email')
+	if not email:
+		return jsonify({'error': 'invalid token payload'}), 401
+
+	# Check staff collection first, then users collection
+	staff = get_collection('staff')
+	user = staff.find_one({'email': email})
+	if not user:
+		users = users_collection()
+		user = users.find_one({'email': email})
+	
+	if not user:
+		return jsonify({'error': 'user not found'}), 404
+
+	# hide sensitive fields
+	profile = {
+		'id': str(user.get('_id')),
+		'email': user.get('email'),
+		'name': user.get('name')
+	}
+	return jsonify(profile)
+
+
+@auth_bp.route('/verify-token', methods=['GET'])
+def verify_token():
+	"""Verify if the provided JWT token is valid."""
+	auth = request.headers.get('Authorization', '')
+	if not auth.startswith('Bearer '):
+		return jsonify({'error': 'missing token', 'valid': False}), 401
+	
+	token = auth.split(None, 1)[1]
+	secret = os.environ.get('SECRET_KEY', current_app.config.get('SECRET_KEY', 'dev-secret'))
+	
+	try:
+		payload = jwt.decode(token, secret, algorithms=['HS256'])
+		return jsonify({
+			'valid': True,
+			'email': payload.get('email'),
+			'sub': payload.get('sub'),
+			'exp': payload.get('exp')
+		})
+	except ExpiredSignatureError:
+		return jsonify({'error': 'token expired', 'valid': False}), 401
+	except InvalidTokenError:
+		return jsonify({'error': 'invalid token', 'valid': False}), 401
+
 @auth_bp.route('/change-password', methods=['POST'])
 def change_password():
 	"""Change password for authenticated user."""
@@ -146,22 +193,4 @@ def change_password():
 	)
 
 	return jsonify({'message': 'password updated successfully'})
-
-	# payload contains email (we stored it on login), find user by email
-	email = payload.get('email')
-	if not email:
-		return jsonify({'error': 'invalid token payload'}), 401
-
-	users = users_collection()
-	user = users.find_one({'email': email})
-	if not user:
-		return jsonify({'error': 'user not found'}), 404
-
-	# hide sensitive fields
-	profile = {
-		'id': str(user.get('_id')),
-		'email': user.get('email'),
-		'name': user.get('name')
-	}
-	return jsonify(profile)
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import './styles.css';
 import { batchService } from './services/batchService';
@@ -25,10 +27,30 @@ function BatchType() {
     const fetchBatches = async () => {
       try {
         const batchesData = await batchService.getBatches(date, dayType, batchType);
-        setBatches(batchesData);
+        console.log('Fetched batches data:', batchesData);
+        // Ensure batchesData is an array
+        if (Array.isArray(batchesData)) {
+          // Ensure each batch has a students array
+          const batchesWithStudents = batchesData.map(batch => ({
+            ...batch,
+            students: batch.students || []
+          }));
+          setBatches(batchesWithStudents);
+        } else if (batchesData && Array.isArray(batchesData.batches)) {
+          // In case the API returns an object with a batches property
+          const batchesWithStudents = batchesData.batches.map(batch => ({
+            ...batch,
+            students: batch.students || []
+          }));
+          setBatches(batchesWithStudents);
+        } else {
+          console.error('Unexpected batches data format:', batchesData);
+          setBatches([]);
+        }
       } catch (err) {
         setError('Failed to load batches');
         console.error('Error fetching batches:', err);
+        setBatches([]); // Set to empty array on error
       } finally {
         setLoading(false);
       }
@@ -68,6 +90,7 @@ function BatchType() {
     switch (batchType) {
       case 'staff': return 'Staff';
       case 'boys': return 'Boys';
+      case 'students': return 'Students';
       case 'girls': return 'Girls';
       default: return batchType;
     }
@@ -77,6 +100,7 @@ function BatchType() {
     switch (batchType) {
       case 'staff': return '👥';
       case 'boys': return '👨‍🎓';
+      case 'students': return '👩‍🎓';
       case 'girls': return '👩‍🎓';
       default: return '📋';
     }
@@ -89,16 +113,16 @@ function BatchType() {
 
   const handleAddStudent = async () => {
     if (isReadOnly) {
-      alert('This date is read-only. You can only view batches for past or future dates.');
+      toast.info('This date is read-only. You can only view batches for past or future dates.');
       return;
     }
     if (!studentName || !studentId || !phoneNumber || !bagNumber || !time || !numberOfClothes) {
-      alert('Please fill in all fields');
+      toast.info('Please fill in all fields');
       return;
     }
 
     if (currentBatchStudents.length >= 20) {
-      alert('Maximum 20 students allowed per batch');
+      toast.info('Maximum 20 students allowed per batch');
       return;
     }
 
@@ -112,19 +136,22 @@ function BatchType() {
         numberOfClothes: parseInt(numberOfClothes)
       };
 
+      let batchIdToUse = currentBatchId;
+
       // If no current batch, create a new one
-      if (!currentBatchId) {
+      if (!batchIdToUse) {
         const newBatch = await batchService.createBatch({
           date,
           dayType,
           batchType,
           batchNumber: getNextBatchNumber()
         });
+        batchIdToUse = newBatch._id;
         setCurrentBatchId(newBatch._id);
       }
 
       // Add student to the current batch
-      const addedStudent = await batchService.addStudent(currentBatchId, newStudent);
+      const addedStudent = await batchService.addStudent(batchIdToUse, newStudent);
       setCurrentBatchStudents([...currentBatchStudents, addedStudent]);
 
       // Clear form
@@ -136,7 +163,7 @@ function BatchType() {
       setNumberOfClothes('');
     } catch (err) {
       console.error('Error adding student:', err);
-      alert('Failed to add student. Please try again.');
+      toast.info('Failed to add student. Please try again.');
     }
     
     // Clear form
@@ -154,11 +181,11 @@ function BatchType() {
 
   const handleCreateBatch = () => {
     if (isReadOnly) {
-      alert('This date is read-only. You can only view batches for past or future dates.');
+      toast.info('This date is read-only. You can only view batches for past or future dates.');
       return;
     }
     if (currentBatchStudents.length === 0) {
-      alert('Please add at least one student to create a batch');
+      toast.info('Please add at least one student to create a batch');
       return;
     }
 
@@ -186,7 +213,7 @@ function BatchType() {
 
   const toggleAddForm = () => {
     if (isReadOnly) {
-      alert('This date is read-only. Adding batches is disabled.');
+      toast.info('This date is read-only. Adding batches is disabled.');
       return;
     }
     setShowAddForm(!showAddForm);
@@ -199,56 +226,14 @@ function BatchType() {
     <div style={{ 
       minHeight: '100vh', 
       background: 'linear-gradient(135deg, #E8E5DA 0%, #CDC392 50%, #9EB7E5 100%)',
-      padding: '2rem',
-      paddingTop: '100px'
+      padding: '1rem 2rem 2rem',
+      paddingTop: '1rem'
     }}>
-      {/* Header with Back Button and Batch Type */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '2rem',
-        background: 'rgba(255, 255, 255, 0.9)',
-        padding: '1rem 2rem',
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button 
-            onClick={handleBackToBatchSelection}
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: 'rgba(100, 141, 229, 0.1)',
-              color: '#648DE5',
-              border: '2px solid #648DE5',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: '600'
-            }}
-          >
-            ← Back
-          </button>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ fontSize: '2rem' }}>{getBatchTypeIcon()}</span>
-          <span style={{ 
-            padding: '0.5rem 1rem', 
-            borderRadius: '20px', 
-            fontWeight: '700', 
-            color: 'white',
-            background: dayType === 'boys' ? 'linear-gradient(135deg, #4ECDC4 0%, #6EE7DF 100%)' : 'linear-gradient(135deg, #FFB6C1 0%, #FFC0CB 100%)'
-          }}>
-            {dayType === 'boys' ? 'Boys Day' : 'Girls Day'}
-          </span>
-        </div>
-      </div>
-
+      <ToastContainer />
       {/* Page Title and Add Batch Button */}
       <div style={{ 
         textAlign: 'center', 
-        marginBottom: '2rem',
+        marginBottom: '1rem',
         background: 'rgba(255, 255, 255, 0.9)',
         padding: '1.5rem',
         borderRadius: '12px',
@@ -289,7 +274,6 @@ function BatchType() {
             color: 'white',
             border: 'none',
             borderRadius: '8px',
-            cursor: 'pointer',
             fontSize: '1rem',
             fontWeight: '600',
             boxShadow: '0 2px 8px rgba(100, 141, 229, 0.3)',
@@ -333,20 +317,20 @@ function BatchType() {
             borderRadius: '8px'
           }}>
             <p style={{ margin: 0, color: '#648DE5', fontWeight: '600' }}>
-              Students: {currentBatchStudents.length}/20
+              {batchType === 'staff' ? 'Staff Members:' : 'Students:'} {currentBatchStudents.length}/20
             </p>
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', color: '#648DE5', fontWeight: '600' }}>
-                Student Name:
+                {batchType === 'staff' ? 'Staff Name:' : 'Student Name:'}
               </label>
               <input
                 type="text"
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
-                placeholder="Enter student name"
+                placeholder={batchType === 'staff' ? 'Enter staff name' : 'Enter student name'}
                 style={{ 
                   width: '100%', 
                   padding: '0.875rem 1rem', 
@@ -359,13 +343,13 @@ function BatchType() {
 
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', color: '#648DE5', fontWeight: '600' }}>
-                Student ID:
+                {batchType === 'staff' ? 'Staff ID:' : 'Student ID:'}
               </label>
               <input
                 type="text"
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value)}
-                placeholder="Enter student ID"
+                placeholder={batchType === 'staff' ? 'Enter staff ID' : 'Enter student ID'}
                 style={{ 
                   width: '100%', 
                   padding: '0.875rem 1rem', 
@@ -473,7 +457,7 @@ function BatchType() {
                 boxShadow: '0 4px 12px rgba(100, 141, 229, 0.3)'
               }}
             >
-              Add Student
+              {batchType === 'staff' ? 'Add Staff' : 'Add Student'}
             </button>
             <button 
               onClick={handleCreateBatch}
@@ -523,7 +507,7 @@ function BatchType() {
                 fontWeight: '700',
                 textAlign: 'center'
               }}>
-                Current Students ({currentBatchStudents.length}/20)
+                {batchType === 'staff' ? 'Current Staff Members' : 'Current Students'} ({currentBatchStudents.length}/20)
               </h4>
               <div style={{ 
                 display: 'grid', 
@@ -595,7 +579,7 @@ function BatchType() {
       }}>
         <h3 style={{ 
           color: '#648DE5', 
-          marginBottom: '1.5rem',
+          marginBottom: '1rem',
           fontSize: '1.5rem',
           fontWeight: '700',
           textAlign: 'center'
@@ -603,7 +587,7 @@ function BatchType() {
           Current {getBatchTypeDisplay()} Batches
         </h3>
         
-        {batches.length === 0 ? (
+        {!batches || batches.length === 0 ? (
           <div style={{ 
             textAlign: 'center', 
             padding: '3rem',
@@ -622,7 +606,7 @@ function BatchType() {
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
-            gap: '1.5rem' 
+            gap: '1rem' 
           }}>
             {batches.map(batch => (
               <div key={batch.id} style={{ 
@@ -681,12 +665,12 @@ function BatchType() {
                     marginBottom: '0.5rem',
                     fontSize: '1rem'
                   }}>
-                    <strong>Students:</strong> {batch.students.length}/20
+                    <strong>{batchType === 'staff' ? 'Staff Members:' : 'Students:'}</strong> {batch.students?.length || 0}/20
                   </p>
                 </div>
 
                 <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  {batch.students.map((student, index) => (
+                  {batch.students && batch.students.length > 0 ? batch.students.map((student, index) => (
                     <div key={student.id} style={{ 
                       background: 'rgba(255, 255, 255, 0.8)', 
                       border: '1px solid #CDC392', 
@@ -724,7 +708,17 @@ function BatchType() {
                         <strong>Clothes:</strong> {student.numberOfClothes}
                       </p>
                     </div>
-                  ))}
+                  )) : (
+                    <p style={{ 
+                      textAlign: 'center', 
+                      color: '#9EB7E5', 
+                      fontSize: '0.9rem',
+                      fontStyle: 'italic',
+                      padding: '1rem'
+                    }}>
+                      {batchType === 'staff' ? 'No staff members added yet' : 'No students added yet'}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

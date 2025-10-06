@@ -59,7 +59,13 @@ function Login() {
 
       // On success, login and redirect
       if (data.token) {
-        login(data.token);
+        // Extract user data from response
+        const userData = {
+          name: data.user?.name || data.name || email.split('@')[0],
+          email: data.user?.email || email,
+          role: data.user?.role || data.role || 'User'
+        };
+        login(data.token, userData);
       }
 
       // Redirect to calendar page after successful sign-in

@@ -104,50 +104,21 @@ function Calendar() {
           <button onClick={goNext} aria-label="Next Month">›</button>
         </div>
 
-        {/* Month information */}
-        <div className="month-info">
-          <div className="current-month-indicator">
-            {isCurrentMonth ? (
-              <span className="current-month-badge">Current Month</span>
-            ) : (
-              <span className="other-month-badge">
-                {activeDate.getMonth() > currentMonth ? 'Future Month' : 'Past Month'}
-              </span>
-            )}
-          </div>
-          <div className="month-stats">
-            <div className="stat-item">
-              <span className="stat-label">Total Days:</span>
-              <span className="stat-value">{days.filter(d => d !== null).length}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Holidays:</span>
-              <span className="stat-value">{days.filter(d => d && getDayType(d) === 'holiday').length}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Boys Days:</span>
-              <span className="stat-value">{days.filter(d => d && getDayType(d) === 'boys').length}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Girls Days:</span>
-              <span className="stat-value">{days.filter(d => d && getDayType(d) === 'girls').length}</span>
-            </div>
-          </div>
-        </div>
+        <div className="calendar-main-content">
+          <div className="calendar-grid-wrapper">
+            <div className="calendar-grid">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                <div key={d} className="calendar-cell calendar-dow">{d}</div>
+              ))}
+              {days.map((dateObj, idx) => {
+                if (!dateObj) {
+                  return (
+                    <div key={idx} className="calendar-cell calendar-empty"></div>
+                  );
+                }
 
-        <div className="calendar-grid">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-            <div key={d} className="calendar-cell calendar-dow">{d}</div>
-          ))}
-          {days.map((dateObj, idx) => {
-            if (!dateObj) {
-              return (
-                <div key={idx} className="calendar-cell calendar-empty"></div>
-              );
-            }
-
-            const dayType = getDayType(dateObj);
-            const dayTypeLabel = getDayTypeLabel(dayType);
+                const dayType = getDayType(dateObj);
+                const dayTypeLabel = getDayTypeLabel(dayType);
             const isToday = isSameDay(dateObj, today);
             const isClickable = dayType !== 'holiday';
 
@@ -165,21 +136,54 @@ function Calendar() {
               </div>
             );
           })}
-        </div>
+            </div>
 
-        {/* Legend */}
-        <div className="calendar-legend">
-          <div className="legend-item">
-            <div className="legend-color holiday"></div>
-            <span>Holidays (Sundays)</span>
+            {/* Legend */}
+            <div className="calendar-legend">
+              <div className="legend-item">
+                <div className="legend-color holiday"></div>
+                <span>Holidays (Sundays)</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-color boys"></div>
+                <span>Boys (Mon, Wed, Fri)</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-color girls"></div>
+                <span>Girls (Tue, Thu, Sat)</span>
+              </div>
+            </div>
           </div>
-          <div className="legend-item">
-            <div className="legend-color boys"></div>
-            <span>Boys (Mon, Wed, Fri)</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color girls"></div>
-            <span>Girls (Tue, Thu, Sat)</span>
+
+          {/* Month Stats Sidebar */}
+          <div className="month-info-sidebar">
+            <div className="current-month-indicator">
+              {isCurrentMonth ? (
+                <span className="current-month-badge">Current Month</span>
+              ) : (
+                <span className="other-month-badge">
+                  {activeDate.getMonth() > currentMonth ? 'Future Month' : 'Past Month'}
+                </span>
+              )}
+            </div>
+            <div className="month-stats">
+              <div className="stat-item">
+                <span className="stat-label">Total Days</span>
+                <span className="stat-value">{days.filter(d => d !== null).length}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Holidays</span>
+                <span className="stat-value">{days.filter(d => d && getDayType(d) === 'holiday').length}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Boys Days</span>
+                <span className="stat-value">{days.filter(d => d && getDayType(d) === 'boys').length}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Girls Days</span>
+                <span className="stat-value">{days.filter(d => d && getDayType(d) === 'girls').length}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

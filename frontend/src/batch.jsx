@@ -23,7 +23,7 @@ function Batch() {
   };
 
   const handleBoysGirlsClick = () => {
-    const batchType = dayType === 'boys' ? 'boys' : 'girls';
+    const batchType = dayType === 'boys' ? 'students' : 'students';
     navigate(`/batch/${date}/${dayType}/${batchType}`);
   };
 

@@ -3,7 +3,11 @@ const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
 export const batchService = {
   // Get all batches for a specific date and type
   async getBatches(date, dayType, batchType) {
-    const response = await fetch(`${API_BASE}/api/batches?date=${date}&dayType=${dayType}&batchType=${batchType}`);
+    const response = await fetch(`${API_BASE}/api/batches?date=${date}&dayType=${dayType}&batchType=${batchType}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch batches');
     }
@@ -28,6 +32,9 @@ export const batchService = {
 
   // Add student to a batch
   async addStudent(batchId, studentData) {
+    if (!batchId || batchId === 'null' || batchId === 'undefined') {
+      throw new Error('Invalid batch ID');
+    }
     const response = await fetch(`${API_BASE}/api/batches/${batchId}/students`, {
       method: 'POST',
       headers: {
@@ -44,6 +51,10 @@ export const batchService = {
 
   // Get all students in a batch
   async getBatchStudents(batchId) {
+    if (!batchId || batchId === 'null' || batchId === 'undefined') {
+      console.warn('getBatchStudents called with invalid batchId:', batchId);
+      return [];
+    }
     const response = await fetch(`${API_BASE}/api/batches/${batchId}/students`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`

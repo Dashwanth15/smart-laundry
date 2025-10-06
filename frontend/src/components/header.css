@@ -1,43 +1,334 @@
-.menu-item {
-  display: block;
-  padding: 1rem;
+/* Header Styles */
+.header {
+  background: #E8E5DA;
+  box-shadow: 0 2px 8px rgba(205, 195, 146, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  padding: 0;
+  border-bottom: 2px solid #CDC392;
+}
+
+.header-content {
+  max-width: 100%;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: relative;
+}
+
+/* Brand/Logo */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #648DE5;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(100, 141, 229, 0.1);
+  transition: all 0.3s ease;
+}
+
+.brand:hover {
+  transform: translateY(-2px);
+}
+
+.brand-logo {
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.brand:hover .brand-logo {
+  transform: rotate(360deg);
+}
+
+.brand-text {
+  font-size: 1.35rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #1e3a8a 0%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
+}
+
+/* Nav Links (Desktop) */
+.nav-links {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.nav-link {
   color: #648DE5;
   text-decoration: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
   transition: all 0.3s ease;
+  font-weight: 600;
+  border: 2px solid transparent;
+}
+
+.nav-link:hover {
+  background: #CDC392;
+  border-color: #648DE5;
+  transform: translateY(-2px);
+}
+
+.nav-link.login-btn {
+  background: linear-gradient(135deg, #648DE5 0%, #9EB7E5 100%);
+  color: white;
+  border: 2px solid #648DE5;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(100, 141, 229, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-link.login-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.nav-link.login-btn:hover::before {
+  left: 100%;
+}
+
+.nav-link.login-btn:hover {
+  color: white;
+  background: linear-gradient(135deg, #5a7fd8 0%, #8ba8e0 100%);
+  border-color: #5a7fd8;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(100, 141, 229, 0.4);
+}
+
+/* Profile Container */
+.profile-container {
+  position: relative;
+}
+
+/* Profile Button */
+.profile-button {
   background: none;
   border: none;
-  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s ease;
+}
+
+.profile-button:hover {
+  transform: scale(1.05);
+}
+
+.profile-button:active {
+  transform: scale(0.95);
+}
+
+.profile-avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #648DE5 0%, #9EB7E5 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(100, 141, 229, 0.3);
+  border: 2px solid white;
+  transition: all 0.3s ease;
+}
+
+.profile-button:hover .profile-avatar {
+  box-shadow: 0 4px 12px rgba(100, 141, 229, 0.4);
+  border-color: #CDC392;
+}
+
+/* Profile Modal */
+.profile-modal {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 300px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 2px solid #CDC392;
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out;
+  z-index: 1100;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Profile Modal Header */
+.profile-modal-header {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 2px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile-modal-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #648DE5 0%, #9EB7E5 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(100, 141, 229, 0.3);
+  flex-shrink: 0;
+}
+
+.profile-modal-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.profile-modal-name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-modal-email {
+  font-size: 0.875rem;
+  color: #6c757d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-modal-role {
+  font-size: 0.75rem;
+  color: #648DE5;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 0.25rem;
+}
+
+/* Profile Modal Divider */
+.profile-modal-divider {
+  height: 1px;
+  background: #dee2e6;
+}
+
+/* Profile Modal Menu */
+.profile-modal-menu {
+  padding: 0.5rem 0;
+}
+
+.profile-modal-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.875rem 1.5rem;
+  color: #2c3e50;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  background: none;
+  border: none;
+  font-size: 1rem;
   font-family: inherit;
   cursor: pointer;
   text-align: left;
   width: 100%;
+  border-left: 3px solid transparent;
 }
 
-.menu-item:hover {
-  background-color: #f0f0f0;
-  color: #9EB7E5;
+.profile-modal-item:hover {
+  background-color: #f8f9fa;
+  color: #648DE5;
+  border-left-color: #648DE5;
 }
 
-/* Styles for buttons that should look like nav links */
-button.nav-link {
-  background: none;
-  border: none;
-  font: inherit;
-  cursor: pointer;
-  margin: 0;
-  padding: 0.75rem 1.5rem;
+.profile-modal-item svg {
+  flex-shrink: 0;
 }
 
-button.nav-link.login-btn {
-  background: linear-gradient(135deg, #648DE5 0%, #9EB7E5 100%);
-  color: white;
-  border: 2px solid #648DE5;
-  border-radius: 15px;
-  padding: 0.75rem 2rem;
-  font-weight: 700;
-  letter-spacing: 0.025em;
-  box-shadow: 0 4px 12px rgba(100, 141, 229, 0.3);
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
+.profile-modal-item.logout-item {
+  color: #dc3545;
+}
+
+.profile-modal-item.logout-item:hover {
+  background-color: #fff5f5;
+  border-left-color: #dc3545;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .header-content {
+    padding: 1rem;
+  }
+
+  .brand-text {
+    font-size: 1.5rem;
+  }
+
+  .brand-logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .nav-link:not(.login-btn) {
+    display: none;
+  }
+
+  .profile-modal {
+    width: 280px;
+    right: -1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-text {
+    font-size: 1.25rem;
+  }
+
+  .brand-logo {
+    width: 35px;
+    height: 35px;
+  }
+
+  .profile-modal {
+    width: calc(100vw - 2rem);
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
 }

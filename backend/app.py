@@ -1,5 +1,6 @@
 from flask import Flask
 from auth import auth_bp
+from batches import batches_bp
 from db import init_db
 from dotenv import load_dotenv
 from flask_cors import CORS
@@ -22,6 +23,7 @@ def create_app():
 
 	init_db(app)
 	app.register_blueprint(auth_bp, url_prefix='/api')
+	app.register_blueprint(batches_bp, url_prefix='/api')
 	return app
 
 
