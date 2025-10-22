@@ -73,24 +73,36 @@ function Calendar() {
     const fetchCounts = async () => {
       try {
         // Compute the first and last day of the active month
-  const year = activeDate.getFullYear();
-  const month = activeDate.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const monthParam = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2,'0')}`;
+        const year = activeDate.getFullYear();
+        const month = activeDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const monthParam = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2,'0')}`;
 
-  // Request all batches for the month in a single API call using month-only startDate
-  // Backend supports month-only startDate (YYYY-MM) and expands it to the full month
-  const data = await batchService.getBatchesForRange(monthParam, null);
+        console.log('🔍 Calendar: Fetching batches for month:', monthParam);
+        console.log('🔍 Calendar: Active date:', activeDate.toISOString());
+
+        // Request all batches for the month in a single API call using month-only startDate
+        // Backend supports month-only startDate (YYYY-MM) and expands it to the full month
+        const data = await batchService.getBatchesForRange(monthParam, null);
+        
+        console.log('🔍 Calendar: API response:', data);
+        
         const nextCounts = {};
         if (data && Array.isArray(data.batches)) {
+          console.log('🔍 Calendar: Found', data.batches.length, 'batches');
           data.batches.forEach(b => {
             if (!b || !b.date) return;
             nextCounts[b.date] = (nextCounts[b.date] || 0) + 1;
+            console.log('🔍 Calendar: Batch for date', b.date, 'count:', nextCounts[b.date]);
           });
+        } else {
+          console.log('🔍 Calendar: No batches array found in response');
         }
+        
+        console.log('🔍 Calendar: Final batch counts:', nextCounts);
         if (mounted) setBatchCounts(nextCounts);
       } catch (err) {
-        console.warn('Failed to fetch monthly batches', err);
+        console.error('❌ Calendar: Failed to fetch monthly batches', err);
         if (mounted) setBatchCounts({});
       }
     };

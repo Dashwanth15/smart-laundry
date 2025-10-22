@@ -39,15 +39,31 @@ export const batchService = {
     if (dayType) params.append('dayType', dayType);
     if (batchType) params.append('batchType', batchType);
 
-    const response = await fetch(`${API_BASE}/api/batches?${params.toString()}`, {
+    const url = `${API_BASE}/api/batches?${params.toString()}`;
+    const token = localStorage.getItem('authToken');
+    
+    console.log('🔍 BatchService: Fetching batches from:', url);
+    console.log('🔍 BatchService: Token exists:', !!token);
+    console.log('🔍 BatchService: Token preview:', token ? token.substring(0, 20) + '...' : 'null');
+
+    const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        'Authorization': `Bearer ${token}`
       }
     });
+    
+    console.log('🔍 BatchService: Response status:', response.status);
+    console.log('🔍 BatchService: Response ok:', response.ok);
+    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ BatchService: Error response:', errorText);
       throw new Error(`Failed to fetch batches for range (${response.status} ${response.statusText})`);
     }
-    return response.json();
+    
+    const data = await response.json();
+    console.log('🔍 BatchService: Response data:', data);
+    return data;
   },
 
   // Create a new batch
