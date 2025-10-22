@@ -3,7 +3,7 @@ from db import get_collection
 import jwt
 import os
 from jwt import ExpiredSignatureError, InvalidTokenError
-from datetime import datetime
+from datetime import datetime, timedelta
 
 batches_bp = Blueprint('batches', __name__)
 
@@ -38,11 +38,64 @@ def get_batches():
     date = request.args.get('date')
     day_type = request.args.get('dayType')
     batch_type = request.args.get('batchType')
-    
+    # Optional range support: startDate and endDate (inclusive)
+    start_date = request.args.get('startDate')
+    end_date = request.args.get('endDate')
+
     # Build query filter
     query_filter = {}
+    # If a specific date is provided, keep older behavior (exact match)
     if date:
         query_filter['date'] = date
+    else:
+        # Helper to expand YYYY-MM into start and end YYYY-MM-DD
+        def expand_month_range(s):
+            if not s or len(s) != 7:
+                return None, None
+            try:
+                y, m = map(int, s.split('-'))
+                start = datetime(y, m, 1)
+                if m == 12:
+                    next_month = datetime(y + 1, 1, 1)
+                else:
+                    next_month = datetime(y, m + 1, 1)
+                last = next_month - timedelta(days=1)
+                return start.strftime('%Y-%m-%d'), last.strftime('%Y-%m-%d')
+            except Exception:
+                return None, None
+
+        # Both start and end provided -> range
+        if start_date and end_date:
+            s_start, s_end = expand_month_range(start_date)
+            e_start, e_end = expand_month_range(end_date)
+            # If either was month-only and expansion succeeded, use expanded values
+            if s_start and s_end and (len(start_date) == 7):
+                start_val = s_start
+            else:
+                start_val = start_date
+
+            if e_start and e_end and (len(end_date) == 7):
+                end_val = e_end
+            else:
+                end_val = end_date
+
+            if start_val and end_val:
+                query_filter['date'] = {'$gte': start_val, '$lte': end_val}
+        elif start_date:
+            # Single start provided -> from start_date to infinity (or end of month if month-only)
+            s_start, s_end = expand_month_range(start_date)
+            if s_start and s_end:
+                query_filter['date'] = {'$gte': s_start, '$lte': s_end}
+            else:
+                query_filter['date'] = {'$gte': start_date}
+        elif end_date:
+            # Single end provided -> up to end_date (or end of month if month-only)
+            e_start, e_end = expand_month_range(end_date)
+            if e_end:
+                query_filter['date'] = {'$lte': e_end}
+            else:
+                query_filter['date'] = {'$lte': end_date}
+
     if day_type:
         query_filter['dayType'] = day_type
     if batch_type:
@@ -222,7 +275,7 @@ def add_student_to_batch(batch_id):
             'address': data.get('address', ''),
             'addedAt': datetime.utcnow().isoformat(),
             'addedBy': payload.get('email'),
-            # Add any additional fields from the request
+            # Add any additional fields from the request, excluding those explicitly handled
             **{k: v for k, v in data.items() if k not in ['name', 'email', 'phone', 'address']}
         }
         
@@ -336,4 +389,189 @@ def update_student_in_batch(batch_id, student_id):
     
     except Exception as e:
         current_app.logger.error(f"Error updating student {student_id} in batch {batch_id}: {str(e)}")
+        return jsonify({'error': 'internal server error'}), 500
+
+
+@batches_bp.route('/batches/<batch_id>/complete', methods=['POST'])
+def mark_batch_as_completed(batch_id):
+    """Mark a batch as completed."""
+    payload, error, status_code = verify_token()
+    if error:
+        return jsonify(error), status_code
+
+    try:
+        from bson import ObjectId
+        batches_collection = get_collection('batches')
+
+        # Determine object id type
+        try:
+            batch_object_id = ObjectId(batch_id)
+        except:
+            batch_object_id = batch_id
+
+        # Update the batch to set completed flag and timestamp
+        update_data = {
+            '$set': {
+                'completed': True,
+                'completedAt': datetime.utcnow().isoformat(),
+                'completedBy': payload.get('email')
+            }
+        }
+
+        result = batches_collection.update_one({'_id': batch_object_id}, update_data)
+
+        if result.matched_count == 0:
+            return jsonify({'error': 'batch not found'}), 404
+
+        # Return the updated batch
+        batch = batches_collection.find_one({'_id': batch_object_id})
+        if '_id' in batch:
+            batch['_id'] = str(batch['_id'])
+
+        return jsonify(batch)
+
+    except Exception as e:
+        current_app.logger.error(f"Error marking batch {batch_id} as completed: {str(e)}")
+        return jsonify({'error': 'internal server error'}), 500
+
+
+@batches_bp.route('/batches/<batch_id>', methods=['DELETE'])
+def delete_batch(batch_id):
+    """Delete a batch by ID."""
+    payload, error, status_code = verify_token()
+    if error:
+        return jsonify(error), status_code
+
+    try:
+        from bson import ObjectId
+        batches_collection = get_collection('batches')
+
+        try:
+            batch_object_id = ObjectId(batch_id)
+        except:
+            batch_object_id = batch_id
+
+        result = batches_collection.delete_one({'_id': batch_object_id})
+
+        if result.deleted_count == 0:
+            return jsonify({'error': 'batch not found'}), 404
+
+        return jsonify({'message': 'batch deleted successfully', 'batch_id': str(batch_object_id)})
+
+    except Exception as e:
+        current_app.logger.error(f"Error deleting batch {batch_id}: {str(e)}")
+        return jsonify({'error': 'internal server error'}), 500
+
+
+@batches_bp.route('/batches/<batch_id>', methods=['PUT'])
+def update_batch(batch_id):
+    """Update batch fields."""
+    payload, error, status_code = verify_token()
+    if error:
+        return jsonify(error), status_code
+
+    data = request.get_json() or {}
+
+    # Allowed fields to update
+    allowed_fields = ['date', 'dayType', 'batchType', 'students', 'notes']
+    update_fields = {k: v for k, v in data.items() if k in allowed_fields}
+
+    if not update_fields:
+        return jsonify({'error': 'no valid fields to update'}), 400
+
+    try:
+        from bson import ObjectId
+        batches_collection = get_collection('batches')
+
+        try:
+            batch_object_id = ObjectId(batch_id)
+        except:
+            batch_object_id = batch_id
+
+        # Add metadata
+        update_fields['lastModifiedAt'] = datetime.utcnow().isoformat()
+        update_fields['lastModifiedBy'] = payload.get('email')
+
+        result = batches_collection.update_one(
+            {'_id': batch_object_id},
+            {'$set': update_fields}
+        )
+
+        if result.matched_count == 0:
+            return jsonify({'error': 'batch not found'}), 404
+
+        batch = batches_collection.find_one({'_id': batch_object_id})
+        if '_id' in batch:
+            batch['_id'] = str(batch['_id'])
+
+        return jsonify(batch)
+
+    except Exception as e:
+        current_app.logger.error(f"Error updating batch {batch_id}: {str(e)}")
+        return jsonify({'error': 'internal server error'}), 500
+
+
+@batches_bp.route('/students/search', methods=['GET', 'OPTIONS'])
+def search_students():
+    """Search students across all batches by partial name or phone."""
+    # Allow preflight OPTIONS without auth to satisfy browser CORS checks
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    # Verify authentication for actual GET requests
+    payload, error, status_code = verify_token()
+    if error:
+        return jsonify(error), status_code
+
+    name_q = request.args.get('name')
+    phone_q = request.args.get('phone')
+
+    try:
+        batches_collection = get_collection('batches')
+
+        # Simple scan-through implementation: unwind students arrays and match substrings
+        cursor = batches_collection.find({}, {'students': 1})
+        found = {}
+        name_q_l = name_q.lower() if name_q else None
+        phone_q_l = phone_q.lower() if phone_q else None
+
+        for doc in cursor:
+            for s in doc.get('students', []):
+                try:
+                    s_name = (s.get('name') or '').lower()
+                    s_phone = (s.get('phone') or s.get('phoneNumber') or '').lower()
+                except Exception:
+                    s_name = ''
+                    s_phone = ''
+
+                match = False
+                if name_q_l and name_q_l in s_name:
+                    match = True
+                if phone_q_l and phone_q_l in s_phone:
+                    match = True
+
+                if match:
+                    sid = s.get('id') or s.get('studentId') or None
+                    # Deduplicate by id or by compound key
+                    key = sid or f"{s.get('name','')}-{s.get('phone','')}-{s.get('email','')}"
+                    if key not in found:
+                        # keep only useful fields
+                        found[key] = {
+                            'id': s.get('id'),
+                            'name': s.get('name'),
+                            'studentId': s.get('studentId'),
+                            'phone': s.get('phone') or s.get('phoneNumber'),
+                            'email': s.get('email'),
+                            'address': s.get('address'),
+                            'bagNumber': s.get('bagNumber'),
+                            'time': s.get('time'),
+                            'numberOfClothes': s.get('numberOfClothes')
+                        }
+
+        # Return as list, limit to 50 matches
+        results = list(found.values())[:50]
+        return jsonify(results)
+
+    except Exception as e:
+        current_app.logger.error(f"Error searching students: {str(e)}")
         return jsonify({'error': 'internal server error'}), 500

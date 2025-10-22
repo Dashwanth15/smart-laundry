@@ -49,10 +49,24 @@ function Login() {
       console.debug('Login response', { status: res.status, ok: res.ok, data });
 
       if (!res.ok) {
-        // Prefer common message fields from backend
-        const message = data.message || data.error || data.detail || data.raw || `Request failed (${res.status})`;
-        setError(message);
-        setServerInfo({ status: res.status, raw: data.raw || text });
+        // Map authentication failures to a generic message to avoid leaking info
+        const rawMessage = data.message || data.error || data.detail || data.raw || text || `Request failed (${res.status})`;
+
+        // If the server indicates unauthorized or returns common auth-specific messages,
+        // show a generic message to the user.
+        const authIndicators = [401, 'email not found', 'wrong password', 'invalid credentials', 'user not found'];
+        const lowerRaw = String(rawMessage).toLowerCase();
+
+        if (res.status === 401 || authIndicators.some(ind => lowerRaw.includes(ind))) {
+          setError('Invalid email or password');
+          // Keep serverInfo minimal for debugging but don't show raw auth details
+          setServerInfo({ status: res.status });
+        } else {
+          // Prefer common message fields from backend for other errors
+          setError(rawMessage);
+          setServerInfo({ status: res.status, raw: data.raw || text });
+        }
+
         setLoading(false);
         return;
       }

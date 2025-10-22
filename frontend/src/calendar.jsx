@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import './App.css';
 import './styles.css';
 import { ToastContainer, toast } from 'react-toastify';
+import { batchService } from './services/batchService';
+import { useEffect } from 'react';
 import 'react-toastify/dist/ReactToastify.css';
 
 function buildMonthDays(baseDate) {
@@ -61,6 +63,41 @@ function Calendar() {
 
   const today = new Date();
   const isSameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  const [batchCounts, setBatchCounts] = useState({});
+  const [preview, setPreview] = useState({ visible: false, x: 0, y: 0, date: null, items: [] });
+
+  // Fetch batch counts for visible days
+  useEffect(() => {
+    let mounted = true;
+    const fetchCounts = async () => {
+      try {
+        // Compute the first and last day of the active month
+  const year = activeDate.getFullYear();
+  const month = activeDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const monthParam = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2,'0')}`;
+
+  // Request all batches for the month in a single API call using month-only startDate
+  // Backend supports month-only startDate (YYYY-MM) and expands it to the full month
+  const data = await batchService.getBatchesForRange(monthParam, null);
+        const nextCounts = {};
+        if (data && Array.isArray(data.batches)) {
+          data.batches.forEach(b => {
+            if (!b || !b.date) return;
+            nextCounts[b.date] = (nextCounts[b.date] || 0) + 1;
+          });
+        }
+        if (mounted) setBatchCounts(nextCounts);
+      } catch (err) {
+        console.warn('Failed to fetch monthly batches', err);
+        if (mounted) setBatchCounts({});
+      }
+    };
+
+    fetchCounts();
+    return () => { mounted = false; };
+  }, [activeDate]);
 
   // Get current month info
   const currentMonth = today.getMonth();
@@ -122,17 +159,32 @@ function Calendar() {
             const isToday = isSameDay(dateObj, today);
             const isClickable = dayType !== 'holiday';
 
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const dateString = `${year}-${month}-${day}`;
+
+            const count = batchCounts[dateString] || 0;
+            const countClass = count === 0 ? 'batch-none' : (count < 3 ? 'batch-some' : 'batch-many');
+
             return (
               <div
                 key={idx}
-                className={`calendar-cell ${dayType} ${isToday ? 'calendar-today' : ''} ${isClickable ? 'calendar-clickable' : ''}`}
+                className={`calendar-cell ${dayType} ${isToday ? 'calendar-today' : ''} ${isClickable ? 'calendar-clickable' : ''} ${countClass}`}
                 onClick={() => handleDateClick(dateObj)}
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  // lightweight preview: show count and (optionally) top batches
+                  setPreview({ visible: true, x: rect.right + 8, y: rect.top, date: dateString, items: [] });
+                }}
+                onMouseLeave={() => setPreview({ visible: false, x: 0, y: 0, date: null, items: [] })}
                 style={{ cursor: isClickable ? 'pointer' : 'default' }}
               >
                 <div className="day-number">{dateObj.getDate()}</div>
                 {dayTypeLabel && (
                   <div className="day-type-label">{dayTypeLabel}</div>
                 )}
+                <div className="batch-count">{count}</div>
               </div>
             );
           })}
@@ -154,6 +206,14 @@ function Calendar() {
               </div>
             </div>
           </div>
+
+          {/* Hover preview tooltip */}
+          {preview.visible && (
+            <div className="date-preview-tooltip" style={{ position: 'fixed', left: preview.x, top: preview.y }}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{preview.date}</div>
+              <div>{(batchCounts[preview.date] || 0)} batch{(batchCounts[preview.date] || 0) !== 1 ? 'es' : ''}</div>
+            </div>
+          )}
 
           {/* Month Stats Sidebar */}
           <div className="month-info-sidebar">

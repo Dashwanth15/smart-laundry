@@ -11,12 +11,14 @@ import Footer from './components/Footer';
 import Breadcrumb from './components/Breadcrumb';
 import ForgotPassword from './components/ForgotPassword';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PrivateRoute } from './contexts/PrivateRoute';
 import { useState, useEffect } from 'react';
 
 function Home() {
+  const { isAuthenticated } = useAuth();
   const [activeFeature, setActiveFeature] = useState(0);
+  const getStartedTo = isAuthenticated ? '/calendar' : '/login';
 
   const features = [
     {
@@ -84,7 +86,7 @@ function Home() {
             Experience professional cleaning with just a few clicks. Save time, enjoy freshly cleaned clothes, and never worry about laundry day again.
           </p>
           <div className="cta-buttons">
-            <Link to="/login" className="cta-primary">Get Started</Link>
+            <Link to={getStartedTo} className="cta-primary">Get Started</Link>
             <a href="#features" className="cta-secondary">Learn More</a>
           </div>
         </div>
@@ -173,7 +175,7 @@ function Home() {
         <div className="cta-content">
           <h2 className="cta-title">Ready to Get Started?</h2>
           <p className="cta-text">Join thousands of satisfied customers and experience the convenience of Wash-Up today!</p>
-          <Link to="/login" className="cta-button">Sign Up Now</Link>
+          <Link to={getStartedTo} className="cta-button">Sign Up Now</Link>
         </div>
       </section>
     </div>

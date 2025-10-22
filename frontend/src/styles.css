@@ -399,11 +399,44 @@ body {
 
 .testimonials-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
   max-width: 1200px;
   margin: 0 auto;
 }
+
+/* Calendar cell batch count badge */
+.calendar-cell .batch-count {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.08);
+  color: #2d3748;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+/* Color coding based on number of batches */
+.calendar-cell.batch-none { background: transparent; }
+.calendar-cell.batch-some { box-shadow: inset 0 0 0 2px rgba(100,141,229,0.08); }
+.calendar-cell.batch-many { box-shadow: inset 0 0 0 2px rgba(78,205,196,0.12); border: 2px solid rgba(78,205,196,0.15); }
+
+/* Tooltip preview */
+.date-preview-tooltip {
+  position: absolute;
+  z-index: 2000;
+  background: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  font-size: 0.85rem;
+  color: #2d3748;
+  min-width: 160px;
+}
+
+.calendar-cell { position: relative; }
 
 .testimonial-card {
   background: white;
