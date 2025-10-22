@@ -10,6 +10,7 @@ function BatchType() {
   const { date, dayType, batchType } = useParams();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [showClothesCard, setShowClothesCard] = useState(false);
   const [batches, setBatches] = useState([]);
   const [currentBatchStudents, setCurrentBatchStudents] = useState([]);
   const [currentBatchId, setCurrentBatchId] = useState(null);
@@ -792,62 +793,250 @@ function BatchType() {
             <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '0.5rem', alignItems: 'start' }}>
               <label style={{ color: '#648DE5', fontWeight: 600 }}>Clothes:</label>
               <div>
-                {/* Always show clothes card: search on left, cart on right */}
-                <div style={{ border: '1px solid #e6e9ee', borderRadius: 10, padding: 12, background: '#fff' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '70% 30%', gap: 12 }}>
-                    {/* Left column: search and suggestions */}
-                    <div>
+                {/* Clothes selection button and summary */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowClothesCard(!showClothesCard)}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: 'linear-gradient(135deg, #648DE5 0%, #9EB7E5 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 8px rgba(100, 141, 229, 0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <span>Select Clothes</span>
+                    <span style={{ fontSize: '1.2rem' }}>{showClothesCard ? '▼' : '▶'}</span>
+                  </button>
+                  
+                  {/* Quick summary of selected clothes */}
+                  {clothesItems.length > 0 && (
+                    <div style={{ 
+                      padding: '0.5rem 1rem', 
+                      background: 'rgba(100, 141, 229, 0.1)', 
+                      borderRadius: '8px', 
+                      border: '1px solid #648DE5',
+                      fontSize: '0.9rem',
+                      fontWeight: '600',
+                      color: '#2d3748'
+                    }}>
+                      {clothesItems.reduce((s, it) => s + it.qty, 0)} items • ₹{clothesItems.reduce((s, it) => s + (it.qty * it.rate), 0)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Expandable clothes selection card */}
+                {showClothesCard && (
+                  <div style={{ 
+                    border: '2px solid #648DE5', 
+                    borderRadius: '12px', 
+                    padding: '1.5rem', 
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    boxShadow: '0 4px 12px rgba(100, 141, 229, 0.2)',
+                    marginBottom: '1rem'
+                  }}>
+                    <h4 style={{ 
+                      color: '#648DE5', 
+                      marginBottom: '1rem',
+                      fontSize: '1.2rem',
+                      fontWeight: '700',
+                      textAlign: 'center'
+                    }}>
+                      Select Clothes
+                    </h4>
+                    
+                    {/* Search and add new cloth types */}
+                    <div style={{ marginBottom: '1.5rem' }}>
                       <input
                         type="text"
                         ref={clothSearchRef}
                         value={clothSearch}
                         onChange={(e) => setClothSearch(e.target.value)}
                         placeholder="Search cloth types (e.g. T-shirt, Bedsheet)"
-                        style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #e2e8f0', borderRadius: 8 }}
+                        style={{ 
+                          width: '100%', 
+                          padding: '0.75rem 1rem', 
+                          border: '2px solid #e2e8f0', 
+                          borderRadius: '8px',
+                          fontSize: '1rem'
+                        }}
                       />
                       {showClothSuggestions && (
-                        <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, background: 'white', maxHeight: 220, overflowY: 'auto', marginTop: 8, width: '100%', minWidth: 220 }}>
+                        <div style={{ 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '8px', 
+                          background: 'white', 
+                          maxHeight: '200px', 
+                          overflowY: 'auto', 
+                          marginTop: '8px',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                        }}>
                           {filteredClothSuggestions.map(s => (
-                            <div key={s.type} onClick={() => handleSelectClothSuggestion(s)} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={s.type}>{s.type}</div>
-                              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>₹{s.rate}</div>
+                            <div 
+                              key={s.type} 
+                              onClick={() => handleSelectClothSuggestion(s)} 
+                              style={{ 
+                                padding: '0.75rem 1rem', 
+                                cursor: 'pointer', 
+                                borderBottom: '1px solid #f1f5f9', 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                transition: 'background-color 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+                              onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                            >
+                              <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{s.type}</div>
+                              <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>₹{s.rate}</div>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
 
-                    {/* Right column: cart items */}
-                    <div>
-                      <div style={{ minHeight: 48 }}>
-                        {clothesItems.length === 0 ? (
-                          <div style={{ padding: '0.75rem', color: '#6b7280' }}>No cloth items added. Use the search above to add.</div>
-                        ) : (
-                          <div>
-                            {clothesItems.map(ci => (
-                              <div key={ci.type} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>
-                                <div style={{ display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
-                                  <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={ci.type}>{ci.type}</div>
-                                  <div style={{ color: '#6b7280', marginLeft: 8 }}>₹{ci.rate}</div>
-                                </div>
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 220, justifyContent: 'flex-end' }}>
-                                  <button type="button" onClick={() => setClothQuantities(prev => ({ ...prev, [ci.type]: Math.max(0, (Number(prev[ci.type] || 0) - 1)) }))} style={{ padding: '0.35rem 0.6rem', borderRadius: 6, border: '1px solid #e2e8f0' }}>-</button>
-                                  <div style={{ minWidth: 36, textAlign: 'center' }}>{ci.qty || 0}</div>
-                                  <button type="button" onClick={() => setClothQuantities(prev => ({ ...prev, [ci.type]: (Number(prev[ci.type] || 0) + 1) }))} style={{ padding: '0.35rem 0.6rem', borderRadius: 6, background: '#4ECDC4', color: 'white', border: 'none' }}>+</button>
-                                  <button type="button" onClick={() => setClothQuantities(prev => ({ ...prev, [ci.type]: 0 }))} style={{ padding: '0.35rem 0.6rem', borderRadius: 6, border: '1px solid #FF6B6B', color: '#FF6B6B', background: 'transparent' }}>Remove</button>
-                                </div>
-                              </div>
-                            ))}
+                    {/* Cloth types list with +/- controls */}
+                    <div style={{ 
+                      display: 'grid', 
+                      gap: '1rem',
+                      maxHeight: '300px',
+                      overflowY: 'auto'
+                    }}>
+                      {clothTypes.map(cloth => (
+                        <div key={cloth.type} style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '1rem',
+                          background: 'rgba(232, 229, 218, 0.5)',
+                          borderRadius: '8px',
+                          border: '1px solid #CDC392'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ 
+                              fontWeight: '600', 
+                              fontSize: '1rem', 
+                              color: '#2d3748',
+                              marginBottom: '0.25rem'
+                            }}>
+                              {cloth.type}
+                            </div>
+                            <div style={{ 
+                              fontSize: '0.9rem', 
+                              color: '#648DE5',
+                              fontWeight: '500'
+                            }}>
+                              ₹{cloth.rate} per item
+                            </div>
                           </div>
-                        )}
-                      </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '0.75rem'
+                          }}>
+                            <button
+                              type="button"
+                              onClick={() => setClothQuantities(prev => ({ 
+                                ...prev, 
+                                [cloth.type]: Math.max(0, (Number(prev[cloth.type] || 0) - 1)) 
+                              }))}
+                              style={{ 
+                                padding: '0.5rem 0.75rem', 
+                                borderRadius: '6px', 
+                                border: '2px solid #e2e8f0',
+                                background: 'white',
+                                color: '#6b7280',
+                                fontSize: '1.1rem',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                minWidth: '40px',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.borderColor = '#FF6B6B';
+                                e.target.style.color = '#FF6B6B';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.borderColor = '#e2e8f0';
+                                e.target.style.color = '#6b7280';
+                              }}
+                            >
+                              -
+                            </button>
+                            
+                            <div style={{ 
+                              minWidth: '50px', 
+                              textAlign: 'center',
+                              fontSize: '1.1rem',
+                              fontWeight: '700',
+                              color: '#2d3748',
+                              padding: '0.5rem 0.75rem',
+                              background: 'rgba(100, 141, 229, 0.1)',
+                              borderRadius: '6px'
+                            }}>
+                              {clothQuantities[cloth.type] || 0}
+                            </div>
+                            
+                            <button
+                              type="button"
+                              onClick={() => setClothQuantities(prev => ({ 
+                                ...prev, 
+                                [cloth.type]: (Number(prev[cloth.type] || 0) + 1) 
+                              }))}
+                              style={{ 
+                                padding: '0.5rem 0.75rem', 
+                                borderRadius: '6px', 
+                                background: 'linear-gradient(135deg, #4ECDC4 0%, #6EE7DF 100%)',
+                                color: 'white',
+                                border: 'none',
+                                fontSize: '1.1rem',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                minWidth: '40px',
+                                boxShadow: '0 2px 8px rgba(78, 205, 196, 0.3)',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.transform = 'scale(1.05)';
+                                e.target.style.boxShadow = '0 4px 12px rgba(78, 205, 196, 0.4)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.transform = 'scale(1)';
+                                e.target.style.boxShadow = '0 2px 8px rgba(78, 205, 196, 0.3)';
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Summary */}
+                    <div style={{ 
+                      marginTop: '1.5rem', 
+                      padding: '1rem',
+                      background: 'rgba(100, 141, 229, 0.1)',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      fontWeight: '700',
+                      color: '#2d3748',
+                      fontSize: '1.1rem'
+                    }}>
+                      Total Items: {clothesItems.reduce((s, it) => s + it.qty, 0)} • 
+                      Total Amount: ₹{clothesItems.reduce((s, it) => s + (it.qty * it.rate), 0)}
                     </div>
                   </div>
-                  {/* Summary spanning both columns */}
-                  <div style={{ marginTop: 12, textAlign: 'right', fontWeight: 700, color: '#2d3748' }}>
-                    Total Clothes: {clothesItems.reduce((s, it) => s + it.qty, 0)} • Total: ₹{clothesItems.reduce((s, it) => s + (it.qty * it.rate), 0)}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
