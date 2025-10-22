@@ -4,13 +4,14 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import './styles.css';
+import config from './config.json';
+import QRCode from 'qrcode';
 import { batchService } from './services/batchService';
 
 function BatchType() {
   const { date, dayType, batchType } = useParams();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
-  const [showClothesCard, setShowClothesCard] = useState(false);
   const [batches, setBatches] = useState([]);
   const [currentBatchStudents, setCurrentBatchStudents] = useState([]);
   const [currentBatchId, setCurrentBatchId] = useState(null);
@@ -65,6 +66,28 @@ function BatchType() {
     setFilteredClothSuggestions(matches);
     setShowClothSuggestions(matches.length > 0);
   }, [clothSearch, clothTypes]);
+
+  // Generate QR data URL when clothesItems or config change
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  useEffect(() => {
+    const total = clothesItems.reduce((s, it) => s + (it.qty || 0) * (it.rate || 0), 0);
+    const cfg = config || {};
+    const gst = cfg.gstPercent || 0;
+    const upi = cfg.upiId || '';
+    if (total > 0 && upi) {
+      const amountWithGst = (total * (1 + gst / 100)).toFixed(2);
+      const upiPayload = `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent('Laundry')}&am=${encodeURIComponent(amountWithGst)}&cu=INR`;
+      QRCode.toDataURL(upiPayload, { width: 200, margin: 1 })
+        .then(url => setQrDataUrl(url))
+        .catch(() => setQrDataUrl(''));
+    } else {
+      setQrDataUrl('');
+    }
+  }, [clothesItems]);
+
+  // Invoice modal + print state
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceForPrint, setInvoiceForPrint] = useState(null);
 
   const handleSelectClothSuggestion = (cloth) => {
     // Add to cart by incrementing quantity
@@ -550,6 +573,50 @@ function BatchType() {
     return sorted[0];
   };
 
+  // Open invoice preview modal with provided data
+  const openInvoiceModal = (subtotal, gstPercent, totalWithGst, items) => {
+    setInvoiceForPrint({
+      subtotal: Number(subtotal) || 0,
+      gstPercent: Number(gstPercent) || 0,
+      totalWithGst: Number(totalWithGst) || 0,
+      items,
+      generatedAt: new Date()
+    });
+    setShowInvoiceModal(true);
+  };
+
+  // Print invoice by writing HTML into a hidden iframe and calling print on it
+  const printInvoiceToPrinter = (data) => {
+    try {
+      const { subtotal, gstPercent, totalWithGst, items, generatedAt } = data;
+      const gstAmount = +(subtotal * (gstPercent / 100));
+      const widthPx = 240; // ~2.5 inch
+      const shopTitle = (config && config.shopTitle) ? config.shopTitle : 'WashUp Laundry';
+      const shopPhone = (config && config.shopPhone) ? config.shopPhone : '';
+      const lines = items.map(it => `<tr><td style="padding:4px 0;">${it.type}</td><td style="padding:4px 0;text-align:right;">${it.qty} x ₹${it.rate}</td></tr>`).join('');
+      const qrImg = qrDataUrl ? `<div style="text-align:center;margin-top:8px;"><img src="${qrDataUrl}" style="width:140px;height:140px;border:1px solid #e2e8f0;border-radius:6px;"/></div>` : '';
+      const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Invoice</title><style>@media print{@page{size:${widthPx}px auto;margin:0;}body{-webkit-print-color-adjust:exact;}}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:8px}.invoice{width:${widthPx}px}h2{margin:0 0 6px 0;font-size:16px;text-align:center}table{width:100%;border-collapse:collapse;font-size:12px}.total{font-weight:700;font-size:14px;margin-top:8px}</style></head><body><div class="invoice"><h2>${shopTitle}</h2><div style="text-align:center;font-size:11px;margin-bottom:4px;">${shopPhone}</div><div style="text-align:center;font-size:10px;margin-bottom:6px;">${new Date(generatedAt).toLocaleString()}</div><table>${lines}</table><div style="margin-top:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>Subtotal</span><span>₹${(subtotal).toFixed(2)}</span></div><div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>GST (${gstPercent}%)</span><span>₹${(gstAmount).toFixed(2)}</span></div><div class="total" style="display:flex;justify-content:space-between;padding-top:6px;"><span>Total</span><span>₹${(totalWithGst).toFixed(2)}</span></div></div>${qrImg}<div style="text-align:center;margin-top:10px;font-size:11px;">Thank You</div></div><script>window.onload=function(){try{window.focus();window.print();}catch(e){console.error(e);}};</script></body></html>`;
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0px';
+      iframe.style.height = '0px';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+      // remove iframe after printing
+      setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) {} }, 3000);
+      setShowInvoiceModal(false);
+    } catch (err) {
+      console.error('Failed to print invoice via iframe', err);
+      alert('Failed to print invoice. See console for details.');
+    }
+  };
+
   const toggleAddForm = () => {
     if (isReadOnly) {
       toast.info('This date is read-only. Adding batches is disabled.');
@@ -775,12 +842,7 @@ function BatchType() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '0.5rem', alignItems: 'center' }}>
-              <label style={{ color: '#648DE5', fontWeight: 600 }}>Transaction ID:</label>
-              <div>
-                <input type="text" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} placeholder="Optional: Payment transaction id" style={{ width: '100%', padding: '0.75rem 0.9rem', border: '2px solid #CDC392', borderRadius: '8px', fontSize: '1rem' }} />
-              </div>
-            </div>
+            {/* Transaction ID moved below the clothes summary */}
 
             <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '0.5rem', alignItems: 'center' }}>
               <label style={{ color: '#648DE5', fontWeight: 600 }}>Time:</label>
@@ -789,258 +851,106 @@ function BatchType() {
                 {formErrors.time && <div style={{ color: 'red', marginTop: 6 }}>{formErrors.time}</div>}
               </div>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '0.5rem', alignItems: 'start' }}>
-              <label style={{ color: '#648DE5', fontWeight: 600 }}>Clothes:</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '0.5rem', alignItems: 'center' }}>
+              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '0.5rem', alignItems: 'center' }}>
+              <label style={{ color: '#648DE5', fontWeight: 600 }}>Add Clothes:</label>
               <div>
-                {/* Clothes selection button and summary */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowClothesCard(!showClothesCard)}
-                    style={{
-                      padding: '0.75rem 1.5rem',
-                      background: 'linear-gradient(135deg, #648DE5 0%, #9EB7E5 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '1rem',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      boxShadow: '0 2px 8px rgba(100, 141, 229, 0.3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}
-                  >
-                    <span>Select Clothes</span>
-                    <span style={{ fontSize: '1.2rem' }}>{showClothesCard ? '▼' : '▶'}</span>
-                  </button>
-                  
-                  {/* Quick summary of selected clothes */}
-                  {clothesItems.length > 0 && (
-                    <div style={{ 
-                      padding: '0.5rem 1rem', 
-                      background: 'rgba(100, 141, 229, 0.1)', 
-                      borderRadius: '8px', 
-                      border: '1px solid #648DE5',
-                      fontSize: '0.9rem',
-                      fontWeight: '600',
-                      color: '#2d3748'
-                    }}>
-                      {clothesItems.reduce((s, it) => s + it.qty, 0)} items • ₹{clothesItems.reduce((s, it) => s + (it.qty * it.rate), 0)}
-                    </div>
-                  )}
-                </div>
-
-                {/* Expandable clothes selection card */}
-                {showClothesCard && (
-                  <div style={{ 
-                    border: '2px solid #648DE5', 
-                    borderRadius: '12px', 
-                    padding: '1.5rem', 
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    boxShadow: '0 4px 12px rgba(100, 141, 229, 0.2)',
-                    marginBottom: '1rem'
-                  }}>
-                    <h4 style={{ 
-                      color: '#648DE5', 
-                      marginBottom: '1rem',
-                      fontSize: '1.2rem',
-                      fontWeight: '700',
-                      textAlign: 'center'
-                    }}>
-                      Select Clothes
-                    </h4>
-                    
-                    {/* Search and add new cloth types */}
-                    <div style={{ marginBottom: '1.5rem' }}>
-                      <input
-                        type="text"
-                        ref={clothSearchRef}
-                        value={clothSearch}
-                        onChange={(e) => setClothSearch(e.target.value)}
-                        placeholder="Search cloth types (e.g. T-shirt, Bedsheet)"
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.75rem 1rem', 
-                          border: '2px solid #e2e8f0', 
-                          borderRadius: '8px',
-                          fontSize: '1rem'
-                        }}
-                      />
-                      {showClothSuggestions && (
-                        <div style={{ 
-                          border: '1px solid #e2e8f0', 
-                          borderRadius: '8px', 
-                          background: 'white', 
-                          maxHeight: '200px', 
-                          overflowY: 'auto', 
-                          marginTop: '8px',
-                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                        }}>
-                          {filteredClothSuggestions.map(s => (
-                            <div 
-                              key={s.type} 
-                              onClick={() => handleSelectClothSuggestion(s)} 
-                              style={{ 
-                                padding: '0.75rem 1rem', 
-                                cursor: 'pointer', 
-                                borderBottom: '1px solid #f1f5f9', 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center',
-                                transition: 'background-color 0.2s'
-                              }}
-                              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
-                              onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
-                            >
-                              <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{s.type}</div>
-                              <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>₹{s.rate}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Cloth types list with +/- controls */}
-                    <div style={{ 
-                      display: 'grid', 
-                      gap: '1rem',
-                      maxHeight: '300px',
-                      overflowY: 'auto'
-                    }}>
-                      {clothTypes.map(cloth => (
-                        <div key={cloth.type} style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '1rem',
-                          background: 'rgba(232, 229, 218, 0.5)',
-                          borderRadius: '8px',
-                          border: '1px solid #CDC392'
-                        }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ 
-                              fontWeight: '600', 
-                              fontSize: '1rem', 
-                              color: '#2d3748',
-                              marginBottom: '0.25rem'
-                            }}>
-                              {cloth.type}
-                            </div>
-                            <div style={{ 
-                              fontSize: '0.9rem', 
-                              color: '#648DE5',
-                              fontWeight: '500'
-                            }}>
-                              ₹{cloth.rate} per item
-                            </div>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '0.75rem'
-                          }}>
-                            <button
-                              type="button"
-                              onClick={() => setClothQuantities(prev => ({ 
-                                ...prev, 
-                                [cloth.type]: Math.max(0, (Number(prev[cloth.type] || 0) - 1)) 
-                              }))}
-                              style={{ 
-                                padding: '0.5rem 0.75rem', 
-                                borderRadius: '6px', 
-                                border: '2px solid #e2e8f0',
-                                background: 'white',
-                                color: '#6b7280',
-                                fontSize: '1.1rem',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                minWidth: '40px',
-                                transition: 'all 0.2s'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.target.style.borderColor = '#FF6B6B';
-                                e.target.style.color = '#FF6B6B';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.borderColor = '#e2e8f0';
-                                e.target.style.color = '#6b7280';
-                              }}
-                            >
-                              -
-                            </button>
-                            
-                            <div style={{ 
-                              minWidth: '50px', 
-                              textAlign: 'center',
-                              fontSize: '1.1rem',
-                              fontWeight: '700',
-                              color: '#2d3748',
-                              padding: '0.5rem 0.75rem',
-                              background: 'rgba(100, 141, 229, 0.1)',
-                              borderRadius: '6px'
-                            }}>
-                              {clothQuantities[cloth.type] || 0}
-                            </div>
-                            
-                            <button
-                              type="button"
-                              onClick={() => setClothQuantities(prev => ({ 
-                                ...prev, 
-                                [cloth.type]: (Number(prev[cloth.type] || 0) + 1) 
-                              }))}
-                              style={{ 
-                                padding: '0.5rem 0.75rem', 
-                                borderRadius: '6px', 
-                                background: 'linear-gradient(135deg, #4ECDC4 0%, #6EE7DF 100%)',
-                                color: 'white',
-                                border: 'none',
-                                fontSize: '1.1rem',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                minWidth: '40px',
-                                boxShadow: '0 2px 8px rgba(78, 205, 196, 0.3)',
-                                transition: 'all 0.2s'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.target.style.transform = 'scale(1.05)';
-                                e.target.style.boxShadow = '0 4px 12px rgba(78, 205, 196, 0.4)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.transform = 'scale(1)';
-                                e.target.style.boxShadow = '0 2px 8px rgba(78, 205, 196, 0.3)';
-                              }}
-                            >
-                              +
-                            </button>
-                          </div>
+                <div style={{ border: '1px solid #e6e9ee', borderRadius: 8, padding: 12, background: '#fafafa', minHeight: 220, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+                  <input
+                    type="text"
+                    ref={clothSearchRef}
+                    value={clothSearch}
+                    onChange={(e) => setClothSearch(e.target.value)}
+                    placeholder="Search cloth types (e.g. T-shirt, Bedsheet)"
+                    style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #e2e8f0', borderRadius: 8 }}
+                  />
+                  {showClothSuggestions && (
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, background: 'white', maxHeight: 220, overflowY: 'auto', marginTop: 8, width: '100%', minWidth: 220 }}>
+                      {filteredClothSuggestions.map(s => (
+                        <div key={s.type} onClick={() => handleSelectClothSuggestion(s)} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={s.type}>{s.type}</div>
+                          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>₹{s.rate}</div>
                         </div>
                       ))}
                     </div>
-
-                    {/* Summary */}
-                    <div style={{ 
-                      marginTop: '1.5rem', 
-                      padding: '1rem',
-                      background: 'rgba(100, 141, 229, 0.1)',
-                      borderRadius: '8px',
-                      textAlign: 'center',
-                      fontWeight: '700',
-                      color: '#2d3748',
-                      fontSize: '1.1rem'
-                    }}>
-                      Total Items: {clothesItems.reduce((s, it) => s + it.qty, 0)} • 
-                      Total Amount: ₹{clothesItems.reduce((s, it) => s + (it.qty * it.rate), 0)}
-                    </div>
-                  </div>
-                )}
+                  )}
+                  {/* QR code and GST info: show when total amount > 0 */}
+                  {(() => {
+                    const total = clothesItems.reduce((s, it) => s + (it.qty || 0) * (it.rate || 0), 0);
+                    const cfg = config || {};
+                    const gst = cfg.gstPercent || 0;
+                    if (total > 0 && qrDataUrl) {
+                      const amountWithGst = (total * (1 + gst / 100)).toFixed(2);
+                      return (
+                        <div style={{ marginTop: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
+                          <div style={{ fontSize: '0.95rem', color: '#2d3748' }}>Amount: ₹{total} (+{gst}% GST) = ₹{amountWithGst}</div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <img src={qrDataUrl} alt="UPI QR" style={{ width: 120, height: 120, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+                            <div>
+                              <button onClick={() => openInvoiceModal(total, gst, amountWithGst, clothesItems)} style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: '#648DE5', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 700 }}>invoice</button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
               </div>
             </div>
-          </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '0.5rem', alignItems: 'center' }}>
+              <label style={{ color: '#648DE5', fontWeight: 600 }}>Items:</label>
+              <div>
+                <div style={{ border: '1px solid #e6e9ee', borderRadius: 10, padding: 12, background: 'rgb(250,250,250)' }}>
+                  <div style={{ minHeight: 48 }}>
+                    {clothesItems.length === 0 ? (
+                      <div style={{ padding: '0.75rem', color: '#6b7280' }}>No cloth items added. Use the search on the left to add.</div>
+                    ) : (
+                      <div>
+                        {clothesItems.map(ci => (
+                          <div key={ci.type} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 140px 90px', gap: 12, alignItems: 'center', padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>
+                            <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={ci.type}>{ci.type}</div>
+                            <div style={{ color: '#6b7280', textAlign: 'right' }}>₹{ci.rate}</div>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
+                              <button type="button" onClick={() => setClothQuantities(prev => ({ ...prev, [ci.type]: Math.max(0, (Number(prev[ci.type] || 0) - 1)) }))} style={{ padding: '0.35rem 0.6rem', borderRadius: 6, border: '1px solid #e2e8f0' }}>-</button>
+                              <div style={{ minWidth: 36, textAlign: 'center' }}>{ci.qty || 0}</div>
+                              <button type="button" onClick={() => setClothQuantities(prev => ({ ...prev, [ci.type]: (Number(prev[ci.type] || 0) + 1) }))} style={{ padding: '0.35rem 0.6rem', borderRadius: 6, background: '#4ECDC4', color: 'white', border: 'none' }}>+</button>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                              <button type="button" onClick={() => setClothQuantities(prev => ({ ...prev, [ci.type]: 0 }))} style={{ padding: '0.35rem 0.6rem', borderRadius: 6, border: '1px solid #FF6B6B', color: '#FF6B6B', background: 'transparent' }}>Remove</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ marginTop: 12, textAlign: 'right', fontWeight: 700, color: '#2d3748' }}>
+                    {(() => {
+                      const subtotal = clothesItems.reduce((s, it) => s + (it.qty * it.rate), 0);
+                      const gstPercent = (config && config.gstPercent) ? Number(config.gstPercent) : 0;
+                      const gstAmount = +(subtotal * (gstPercent / 100));
+                      const totalWithGst = +(subtotal + gstAmount);
+                      return (
+                        <div>
+                          Total Clothes: {clothesItems.reduce((s, it) => s + it.qty, 0)} • GST: ₹{gstAmount.toFixed(2)} • Total: ₹{totalWithGst.toFixed(2)}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '0.5rem', alignItems: 'center' }}>
+                      <label style={{ color: '#648DE5', fontWeight: 600 }}>Transaction ID:</label>
+                      <div>
+                        <input type="text" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} placeholder="Optional: Payment transaction id" style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #CDC392', borderRadius: '8px' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '2rem' }}>
             <button 
               onClick={handleAddStudent}
@@ -1365,6 +1275,37 @@ function BatchType() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Preview Modal */}
+      {showInvoiceModal && invoiceForPrint && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}>
+          <div style={{ background: 'white', padding: 16, borderRadius: 8, width: 280, boxShadow: '0 6px 24px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ fontWeight: 700, color: '#648DE5' }}>{(config && config.shopTitle) ? config.shopTitle : 'WashUp Laundry'}</div>
+              <div style={{ fontSize: 12 }}>{new Date(invoiceForPrint.generatedAt).toLocaleString()}</div>
+            </div>
+            <div style={{ maxHeight: 320, overflowY: 'auto', fontSize: 13 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  {invoiceForPrint.items.map(it => (
+                    <tr key={it.type}><td style={{ padding: '4px 0' }}>{it.type}</td><td style={{ padding: '4px 0', textAlign: 'right' }}>{it.qty} x ₹{it.rate}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal</span><span>₹{(invoiceForPrint.subtotal).toFixed(2)}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>GST ({invoiceForPrint.gstPercent}%)</span><span>₹{(invoiceForPrint.subtotal * invoiceForPrint.gstPercent / 100).toFixed(2)}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginTop: 6 }}><span>Total</span><span>₹{(invoiceForPrint.totalWithGst).toFixed(2)}</span></div>
+                {qrDataUrl && <div style={{ textAlign: 'center', marginTop: 8 }}><img src={qrDataUrl} style={{ width: 140, height: 140, borderRadius: 6 }} alt="qr" /></div>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button onClick={() => { printInvoiceToPrinter(invoiceForPrint); }} style={{ padding: '0.5rem 0.75rem', background: '#4ECDC4', color: 'white', border: 'none', borderRadius: 6 }}>Print</button>
+              <button onClick={() => setShowInvoiceModal(false)} style={{ padding: '0.5rem 0.75rem', background: '#E8E5DA', color: '#2d3748', border: '1px solid #CDC392', borderRadius: 6 }}>Close</button>
             </div>
           </div>
         </div>
