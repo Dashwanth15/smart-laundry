@@ -357,9 +357,13 @@ def update_student_in_batch(batch_id, student_id):
         except:
             batch_object_id = batch_id
         
-        # Create update data
+        # Create update data — allow all student fields
         update_fields = {}
-        allowed_fields = ['name', 'email', 'phone', 'address']
+        allowed_fields = [
+            'name', 'email', 'phone', 'address',
+            'studentId', 'bagNumber', 'time', 'numberOfClothes',
+            'clothesBreakdown', 'totalAmount', 'transactionId'
+        ]
         for field in allowed_fields:
             if field in data:
                 update_fields[f'students.$.{field}'] = data[field]

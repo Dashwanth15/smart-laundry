@@ -52,13 +52,18 @@ function BatchType() {
     const items = clothTypes
       .map(c => ({ type: c.type, qty: Number(clothQuantities[c.type] || 0), rate: c.rate }))
       .filter(it => it.qty > 0);
-    setClothesItems(items);
+    // Bail out early when both old and new are empty to avoid triggering downstream effects
+    setClothesItems(prev => {
+      if (prev.length === 0 && items.length === 0) return prev;
+      return items;
+    });
   }, [clothQuantities, clothTypes]);
   // Filter cloth suggestions when search changes
   useEffect(() => {
     const q = clothSearch && clothSearch.trim().toLowerCase();
     if (!q) {
-      setFilteredClothSuggestions([]);
+      // Only update if not already empty — avoids new [] ref on every render
+      setFilteredClothSuggestions(prev => prev.length === 0 ? prev : []);
       setShowClothSuggestions(false);
       return;
     }
@@ -134,7 +139,6 @@ function BatchType() {
   const fetchBatches = useCallback(async () => {
     try {
       const batchesData = await batchService.getBatches(date, dayType, batchType);
-      console.log('Fetched batches data:', batchesData);
       if (Array.isArray(batchesData)) {
         const batchesWithStudents = batchesData.map(batch => ({
           ...batch,
@@ -161,8 +165,6 @@ function BatchType() {
   useEffect(() => {
     fetchBatches();
   }, [fetchBatches]);
-
-  console.log('BatchType component rendered with:', { date, dayType, batchType });
 
   // Date constraints: allow adding only on today's date
   const getTodayString = () => {
@@ -417,20 +419,11 @@ function BatchType() {
       });
       setEmail('');
       setAddress('');
+      setTransactionId('');
     } catch (err) {
       console.error('Error adding student:', err);
-      toast.info('Failed to add student. Please try again.');
+      toast.error('Failed to add student. Please try again.');
     }
-    
-    // Clear form
-    setStudentName('');
-    setStudentId('');
-    setPhone('');
-    setBagNumber('');
-    setTime('');
-    setNumberOfClothes('');
-    setEmail('');
-    setAddress('');
   };
   
   // ref to student name input to focus when opening add form
