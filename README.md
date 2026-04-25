@@ -4,13 +4,6 @@
 
 ---
 
-## 🔗 Live Demo
-
-> _Deploy and add your URL here_
-> `https://your-deployment-url.com`
-
----
-
 ## 📌 Project Overview
 
 Managing laundry for a large residential facility — a hostel, student housing complex, or similar setup — is surprisingly chaotic. Staff juggle paper registers, students lose their clothes, billing is inconsistent, and there's no clear audit trail.
